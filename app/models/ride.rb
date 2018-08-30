@@ -98,6 +98,81 @@ class Ride < ApplicationRecord
     self.voter&.phone_number
   end
 
+  # create a new ride from a combination of user and ride data
+  def self.create_with_user(ride_params, user_params, ride_zone)
+    ride = Ride.new(ride_params)
+    if ride.pickup_at.blank?
+      ride.errors.add(:name, "Please fill in scheduled date and time.")
+      return ride, false
+    end
+
+    # check for existing voter
+    normalized = PhonyRails.normalize_number(ride_params[:phone_number], default_country_code: 'US')
+    user = User.find_by_id(ride_params[:user_id]) if user_params[:user_id]
+    user ||= User.find_by_phone_number_normalized(normalized)
+    user ||= User.find_by_email(user_params[:email])
+    if user
+      existing = user.open_ride
+      if existing
+        scheduled = existing.pickup_in_time_zone.strftime('%m/%d %l:%M %P %Z')
+        ride.errors.add(:name, "Voter #{user.name} matched by #{user.email} or #{user.phone_number} already has an active ride scheduled for #{scheduled}")
+        return ride, false
+      end
+    end
+
+    if ride.from_city_state.present? && ride.from_city.blank? && ride.from_state.blank?
+      city_state_array = ride.from_city_state.split(',')
+      ride.from_city = city_state_array[0].try(:strip)
+      ride.from_state = city_state_array[1].try(:strip)
+    end
+
+    if ride.to_city_state.present? && ride.to_city.blank? && ride.to_state.blank?
+      city_state_array = ride.to_city_state.split(',')
+      ride.to_city = city_state_array[0].try(:strip)
+      ride.to_state = city_state_array[1].try(:strip)
+    end
+
+    # if ride is rolled back we want to make sure the user is too.
+    ActiveRecord::Base.transaction do
+      unless user
+        user_attrs = {
+            name: user_params[:name],
+            phone_number: user_params[:phone_number],
+            ride_zone: ride_zone,
+            ride_zone_id: ride_zone.id,
+            email: user_params[:email] || User.autogenerate_email,
+            password: user_params[:password] || SecureRandom.hex(8),
+            city: ride.from_city,
+            state: ride.from_state,
+            locale: user_params[:locale],
+            language: user_params[:locale],
+            user_type: 'voter',
+        }
+
+        # TODO: better error handling
+        user = User.create(user_attrs)
+        if user.errors.any?
+          user.errors.each {|name, msg| ride.errors.add(name, msg)}
+          return ride, false
+        end
+      end
+
+      ride.voter = user
+      ride.from_zip = user.zip
+      ride.status = :scheduled
+      ride.ride_zone = ride_zone
+      ride.to_address = Ride::UNKNOWN_ADDRESS if ride.to_address.blank?
+
+      if ride.save
+        Conversation.create_from_ride(ride, thanks_msg(ride))
+        UserMailer.welcome_email_voter_ride(user, ride).deliver_later
+      else
+        return ride, false
+      end
+    end
+    return ride, true
+  end
+
   # return true if ride can be assigned
   def assignable?
     %w(scheduled waiting_assignment ).include?(self.status)
@@ -261,6 +336,10 @@ class Ride < ApplicationRecord
   end
 
   private
+  def self.thanks_msg(ride)
+    I18n.t(:thanks_for_requesting, locale: (ride.voter.locale.blank? ? 'en' : ride.voter.locale), time: ride.pickup_in_time_zone.strftime('%m/%d %l:%M %P'), email: ride.ride_zone.email)
+  end
+
   def check_waiting_assignment
     if self.status == 'scheduled' && self.pickup_at && self.pickup_at < SWITCH_TO_WAITING_ASSIGNMENT.minutes.from_now
       self.status = :waiting_assignment

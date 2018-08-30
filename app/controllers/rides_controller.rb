@@ -19,83 +19,16 @@ class RidesController < ApplicationController
     else
       @locale = :en
     end
-
-    @ride = Ride.new(ride_params)
-
-    # check for existing voter
-    normalized = PhonyRails.normalize_number(params[:ride][:phone_number], default_country_code: 'US')
-    @user = User.find_by_id(params[:user_id]) if params[:user_id]
-    @user ||= User.find_by_phone_number_normalized(normalized)
-    @user ||= User.find_by_email(params[:ride][:email])
-    if @user
-      existing = @user.open_ride
-      if existing
-        scheduled = existing.pickup_in_time_zone.strftime('%m/%d %l:%M %P %Z')
-        @user.errors.add(:name, "match for voter #{@user.name} (#{@user.email}/#{@user.phone_number}) that already has an active ride scheduled for #{scheduled}")
-        render :new and return
-      end
-    end
-
-
-    if @ride.pickup_at.blank?
-      flash[:notice] = "Please fill in scheduled date and time."
+    user_params = params.require(:ride).permit(:user_id, :phone_number, :email, :name, :password, :locale)
+    user_params[:locale] = @locale
+    @ride, ok = Ride.create_with_user(ride_params, user_params, @ride_zone)
+    if ok 
+      @user = @ride.voter
+      @pickup_at = @ride.pickup_at
+      render :success and return
+    else
+      flash.now[:notice] = "Problem creating the ride."
       render :new and return
-    end
-    @pickup_at = @ride.pickup_at
-
-    if @ride.from_city_state.present? && @ride.from_city.blank? && @ride.from_state.blank?
-      city_state_array = @ride.from_city_state.split(',')
-      @ride.from_city = city_state_array[0].try(:strip)
-      @ride.from_state = city_state_array[1].try(:strip)
-    end
-
-    if @ride.to_city_state.present? && @ride.to_city.blank? && @ride.to_state.blank?
-      city_state_array = @ride.to_city_state.split(',')
-      @ride.to_city = city_state_array[0].try(:strip)
-      @ride.to_state = city_state_array[1].try(:strip)
-    end
-
-    # if ride is rolled back we want to make sure the user is too.
-    ActiveRecord::Base.transaction do
-      unless @user
-        user_params = params.require(:ride).permit(:phone_number, :email, :name, :password)
-        user_attrs = {
-            name: user_params[:name],
-            phone_number: user_params[:phone_number],
-            ride_zone: @ride_zone,
-            ride_zone_id: @ride_zone.id,
-            email: user_params[:email] || User.autogenerate_email,
-            password: user_params[:password] || SecureRandom.hex(8),
-            city: @ride.from_city,
-            state: @ride.from_state,
-            locale: @locale,
-            language: @locale,
-            user_type: 'voter',
-        }
-
-        # TODO: better error handling
-        @user = User.create(user_attrs)
-        if @user.errors.any?
-          flash[:notice] = "Problem creating a new user."
-          render :new and return
-        end
-      end
-
-      @ride.voter = @user
-      @ride.from_zip = @user.zip
-      @ride.status = :scheduled
-      @ride.ride_zone = @ride_zone
-      @ride.to_address = Ride::UNKNOWN_ADDRESS if @ride.to_address.blank?
-
-      if @ride.save
-        Conversation.create_from_ride(@ride, thanks_msg)
-        UserMailer.welcome_email_voter_ride(@user, @ride).deliver_later
-        render :success
-      else
-        @user = nil
-        flash[:notice] = "Problem creating a ride."
-        render :new and return
-      end
     end
   end
 
