@@ -102,12 +102,12 @@ class Ride < ApplicationRecord
   def self.create_with_user(ride_params, user_params, ride_zone)
     ride = Ride.new(ride_params)
     if ride.pickup_at.blank?
-      ride.errors.add(:name, "Please fill in scheduled date and time.")
+      ride.errors.add(:pickup, "Please fill in scheduled date and time.")
       return ride, false
     end
 
     # check for existing voter
-    normalized = PhonyRails.normalize_number(ride_params[:phone_number], default_country_code: 'US')
+    normalized = PhonyRails.normalize_number(user_params[:phone_number], default_country_code: 'US')
     user = User.find_by_id(ride_params[:user_id]) if user_params[:user_id]
     user ||= User.find_by_phone_number_normalized(normalized)
     user ||= User.find_by_email(user_params[:email])
@@ -115,7 +115,7 @@ class Ride < ApplicationRecord
       existing = user.open_ride
       if existing
         scheduled = existing.pickup_in_time_zone.strftime('%m/%d %l:%M %P %Z')
-        ride.errors.add(:name, "Voter #{user.name} matched by #{user.email} or #{user.phone_number} already has an active ride scheduled for #{scheduled}")
+        ride.errors.add(:voter, "#{user.name} matched by #{user.email} or #{user.phone_number} already has an active ride scheduled for #{scheduled}")
         return ride, false
       end
     end

@@ -54,6 +54,100 @@ RSpec.describe Ride, type: :model do
     end
   end
 
+  describe 'create with user' do
+    let!(:rz) { create :ride_zone }
+    let(:voter) { create :voter }
+    let(:voter_ride) { create :scheduled_ride, voter: voter}
+    let(:voter_complete_ride) { create :complete_ride, voter: voter}
+    let!(:good_ride_data) { 
+      { "name"=>"Good Name", "from_address"=>"330 Cabrillo St.", "from_city_state"=>"Carnegie, PA",
+        "from_city"=>"Carnegie", "from_state"=>"PA", "pickup_at(1i)"=>"2016", "pickup_at(2i)"=>"11", "pickup_at(3i)"=>"8",
+        "pickup_at(4i)"=>"05", "pickup_at(5i)"=>"00"}
+    }
+    let!(:bad_ride_data) { 
+      { "name"=>"Good Name", "from_address"=>"330 Cabrillo St.", "from_city_state"=>"Carnegie, PA",
+        "from_city"=>"Carnegie", "from_state"=>"definitelynotastate", "pickup_at(1i)"=>"2016", "pickup_at(2i)"=>"11", "pickup_at(3i)"=>"8",
+        "pickup_at(4i)"=>"05", "pickup_at(5i)"=>"00"}
+    }
+    let!(:missing_pickup_data) { 
+      { "name"=>"Good Name", "from_address"=>"330 Cabrillo St.", "from_city_state"=>"Carnegie, PA",
+        "from_city"=>"Carnegie", "from_state"=>"PA" }
+    }
+    let!(:good_user_data) { {:name =>"Good Name", :email =>"good@internet.com", :phone_number=>"2083328765", :locale=>"en"} }
+    let!(:bad_user_data) { {:name =>"Good Name", :email =>"notgoodatinternet.com", :phone_number=>"2083328765", :locale=>"en"} }
+
+    it 'creates a new user, ride, conversation' do
+      expect {
+        r, ok = Ride.create_with_user(good_ride_data, good_user_data, rz)
+        expect(ok).to eq(true)
+        expect(r.name).to eq(good_ride_data["name"])
+        r = Ride.last
+        expect(r.name).to eq(good_ride_data["name"])
+        expect(r.conversation.from_address).to eq(good_ride_data["from_address"])
+        expect(r.voter.email).to eq(good_user_data[:email])
+        expect(User.last.email).to eq(good_user_data[:email])
+      }.to change{Ride.count + User.count + Conversation.count}.by(3)
+    end
+
+    it 'finds voter by email' do
+      user_data = good_user_data.dup
+      user_data[:email] = voter.email
+      r, ok = Ride.create_with_user(good_ride_data, user_data, rz)
+      expect(ok).to eq(true)
+      expect(Ride.last.voter.id).to eq(voter.id) # finds voter in DB
+    end
+
+    it 'finds voter by phone' do
+      user_data = good_user_data.dup
+      user_data[:phone_number] = voter.phone_number
+      r, ok = Ride.create_with_user(good_ride_data, user_data, rz)
+      expect(ok).to eq(true)
+      expect(Ride.last.voter.id).to eq(voter.id) # finds voter in DB
+    end
+
+    it 'allows voter with completed ride' do
+      user_data = good_user_data.dup
+      user_data[:phone_number] = voter.phone_number
+      voter_complete_ride
+      r, ok = Ride.create_with_user(good_ride_data, user_data, rz)
+      expect(ok).to eq(true)
+      expect(Ride.last.voter.id).to eq(voter.id) # finds voter in DB
+    end
+
+    it 'disallows voter with active ride' do
+      user_data = good_user_data.dup
+      user_data[:phone_number] = voter.phone_number
+      voter_ride
+      r, ok = Ride.create_with_user(good_ride_data, user_data, rz)
+      expect(ok).to eq(false)
+      expect(r.errors[:voter][0]).to include("already has an active ride")
+    end
+
+    it 'validates pickup' do
+      expect {
+        r, ok = Ride.create_with_user(missing_pickup_data, good_user_data, rz)
+        expect(ok).to eq(false)
+        expect(r.errors[:pickup][0]).to include("Please fill in scheduled date and time")
+      }.to change{Ride.count + User.count + Conversation.count}.by(0)
+    end
+
+    it 'validates ride fields' do
+      expect {
+        r, ok = Ride.create_with_user(bad_ride_data, good_user_data, rz)
+        expect(ok).to eq(false)
+        expect(r.errors[:state]).to include("isn't a supported state.")
+      }.to change{Ride.count + User.count + Conversation.count}.by(0)
+    end
+
+    it 'validates user data' do
+      expect {
+        r, ok = Ride.create_with_user(good_ride_data, bad_user_data, rz)
+        expect(ok).to eq(false)
+        expect(r.errors[:email][0]).to include("is invalid")
+      }.to change{Ride.count + User.count + Conversation.count}.by(0)
+    end
+  end
+
   it 'finds completed rides' do
     complete = create :complete_ride
     canceled = create :canceled_ride
