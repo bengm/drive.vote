@@ -54,3 +54,6 @@ _site/
 .vagrant
 /public/packs
 /node_modules
+
+# Ingore Active Storage directory used during local development
+storage/
