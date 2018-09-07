@@ -1,0 +1,7 @@
+= form_for [:admin, @ride_uploaded_file], url: admin_rides_csv_path do |f|
+  .col-sm-8.field
+    = f.label :uploaded_csv
+    = f.file_field :uploaded_csv, class: 'form-control'
+
+  .col-sm-8.actions
+    = f.submit t(:save), class: 'btn btn-primary', disable_with: "#{t(:saving)}..."

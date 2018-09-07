@@ -137,6 +137,9 @@ Rails.application.routes.draw do
     resources :drivers, only: [:index]
     resources :metrics, only: [:index]
     resources :rides
+    get   'rides/csv/new' => 'ride_uploaded_files#new'
+    post  'rides/csv' => 'ride_uploaded_files#create'
+    get   'rides/csv/:id' => 'ride_uploaded_files#show', as: 'rides_csv_show'
     resources :ride_zones, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
       member do
         get 'drivers'
