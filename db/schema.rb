@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
- ActiveRecord::Schema.define(version: 2018_09_03_172250) do
+ActiveRecord::Schema.define(version: 2018_09_06_173619) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -94,6 +94,14 @@
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
   end
 
+  create_table "ride_uploaded_files", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.boolean "processed", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_ride_uploaded_files_on_user_id"
+  end
+
   create_table "ride_zones", id: :serial, force: :cascade do |t|
     t.string "name", default: "", null: false
     t.text "description"
@@ -145,7 +153,9 @@
     t.string "from_state", default: "", null: false
     t.string "from_zip", default: "", null: false
     t.string "to_zip", default: "", null: false
+    t.integer "ride_uploaded_file_id"
     t.index ["driver_id"], name: "index_rides_on_driver_id"
+    t.index ["ride_uploaded_file_id"], name: "index_rides_on_ride_uploaded_file_id"
     t.index ["ride_zone_id"], name: "index_rides_on_ride_zone_id"
     t.index ["voter_id"], name: "index_rides_on_voter_id"
   end

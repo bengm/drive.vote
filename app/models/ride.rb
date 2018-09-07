@@ -20,6 +20,7 @@ class Ride < ApplicationRecord
   belongs_to :voter, class_name: 'User', foreign_key: :voter_id
   belongs_to :ride_zone
   has_one :conversation
+  belongs_to :ride_uploaded_file
 
   scope :completed, -> { where(status: Ride.complete_statuses)}
 
