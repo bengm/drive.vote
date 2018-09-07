@@ -5,3 +5,29 @@
   %span#uploaded_file_status=  @ride_uploaded_file.processed?
 %p#spinner{style: 'display:none'}
   SPINNER SPINNER SPINNER
+
+:javascript
+
+  var spinnerElement = $("#spinner");
+  var statusElement = $("#uploaded_file_status");
+
+  function checkSpinner() {
+    if (statusElement.text() != "true") {
+      spinnerElement.show();
+    }
+    else {
+      spinnerElement.hide();
+    }
+  }
+
+  function conn() {  }
+  function disconn() {  }
+  function r(status) {
+    statusElement.text(status);
+    checkSpinner();
+  }
+
+  createRideUploadedFileStatusChannel(#{@ride_uploaded_file.id}, conn, disconn, r);
+  checkSpinner();
+
+
