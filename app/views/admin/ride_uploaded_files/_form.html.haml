@@ -1,4 +1,12 @@
 = form_for [:admin, @ride_uploaded_file], url: admin_rides_csv_path do |f|
+
+  - if @ride_uploaded_file.errors.any?
+    #error_explanation
+      %h2= "#{pluralize(@ride_uploaded_file.errors.count, "error")} prohibited this CSV from being uploaded:"
+      %ul
+        - @ride_uploaded_file.errors.full_messages.each do |msg|
+          %li= msg
+
   .col-sm-8.field
     = f.label :uploaded_csv
     = f.file_field :uploaded_csv, class: 'form-control'
