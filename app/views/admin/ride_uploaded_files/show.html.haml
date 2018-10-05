@@ -1,15 +1,23 @@
 
 
 %p
-  %b Uploaded File Status:
-  %span#uploaded_file_status=  @ride_uploaded_file.processed?
+  %b Dry Run Completed:
+  %span#dry_run_completed= @ride_uploaded_file.dry_run_completed ? "Dry Run Completed" : "Dry Run Not Completed"
+
+- unless @ride_uploaded_file.dry_run_errors.nil?
+  %h2= "#{pluralize(@dry_run_row_errors.count, "bad row")} prohibited this CSV from creating rides:"
+  %ul
+    - @dry_run_row_errors.each do |k, v|
+      %li= "Row #{k}: #{v.join(", ")}"
+
+
 %p#spinner{style: 'display:none'}
   SPINNER SPINNER SPINNER
 
 :javascript
 
   var spinnerElement = $("#spinner");
-  var statusElement = $("#uploaded_file_status");
+  var statusElement = $("#dry_run_completed");
 
   function checkSpinner() {
     if (statusElement.text() != "true") {
@@ -22,8 +30,11 @@
 
   function conn() {  }
   function disconn() {  }
-  function r(status) {
-    statusElement.text(status);
+  function r(data) {
+
+    if (data.dry_run == true) {
+      statusElement.text('Dry Run Completed');
+    }
     checkSpinner();
   }
 

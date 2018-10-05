@@ -25,9 +25,10 @@ function createRideUploadedFileStatusChannel(rideUploadedFileId, connectedCallBa
         },
 
         // Built-in, called by framework whenever data arrives from server
-        received: function(status) {
-            console.log('RideUploadedFileStatusChannel: '+rideUploadedFileId + ' got new status: ' + status); // debugging
-            receiveCallBack(status);
+        received: function(data) {
+            debugger;
+            console.log('RideUploadedFileStatusChannel: '+rideUploadedFileId + ' dryRun?: ' + data.dry_run); // debugging
+            receiveCallBack(data);
         }
 
     });
