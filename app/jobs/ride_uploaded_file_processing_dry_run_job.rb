@@ -16,7 +16,7 @@ class RideUploadedFileProcessingDryRunJob < ApplicationJob
     array.push ride
 
     array.each do |ride|
-      ride.save
+      ride.validate
     end
 
     ####
