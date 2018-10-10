@@ -23,10 +23,11 @@ class RideUploadedFileProcessingDryRunJob < ApplicationJob
 
     @ride_uploaded_file.dry_run_errors = UploadedFileErrorSerializer.serialize(array)
 
-    @ride_uploaded_file.save!
-
     @ride_uploaded_file.dry_run_completed = true
 
-    ActionCable.server.broadcast "ride_uploaded_file_status_#{@ride_uploaded_file.id}", {id: @ride_uploaded_file.id, dry_run: true}
+    @ride_uploaded_file.save!
+
+    # Going to to an ol' fashioned meta-refresh tag for now
+    # ActionCable.server.broadcast "ride_uploaded_file_status_#{@ride_uploaded_file.id}", {id: @ride_uploaded_file.id, dry_run: true}
   end
 end

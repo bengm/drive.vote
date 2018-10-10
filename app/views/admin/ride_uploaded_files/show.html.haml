@@ -1,4 +1,7 @@
+- unless @ride_uploaded_file.dry_run_completed
+  %meta{:content => "5", "http-equiv" => "refresh"}
 
+  %p SPINNER SPINNER SPINNER
 
 %p
   %b Dry Run Completed:
@@ -9,36 +12,5 @@
   %ul
     - @dry_run_row_errors.each do |k, v|
       %li= "Row #{k}: #{v.join(", ")}"
-
-
-%p#spinner{style: 'display:none'}
-  SPINNER SPINNER SPINNER
-
-:javascript
-
-  var spinnerElement = $("#spinner");
-  var statusElement = $("#dry_run_completed");
-
-  function checkSpinner() {
-    if (statusElement.text() != "true") {
-      spinnerElement.show();
-    }
-    else {
-      spinnerElement.hide();
-    }
-  }
-
-  function conn() {  }
-  function disconn() {  }
-  function r(data) {
-
-    if (data.dry_run == true) {
-      statusElement.text('Dry Run Completed');
-    }
-    checkSpinner();
-  }
-
-  createRideUploadedFileStatusChannel(#{@ride_uploaded_file.id}, conn, disconn, r);
-  checkSpinner();
 
 

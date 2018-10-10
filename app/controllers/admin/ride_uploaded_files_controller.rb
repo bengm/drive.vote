@@ -2,7 +2,7 @@ class Admin::RideUploadedFilesController < Admin::AdminApplicationController
 
   def show
     @ride_uploaded_file = RideUploadedFile.find params[:id]
-    @dry_run_row_errors = @ride_uploaded_file.dry_run_errors["errors"]
+    @dry_run_row_errors = @ride_uploaded_file.dry_run_errors["errors"] unless @ride_uploaded_file.dry_run_errors.nil?
   end
 
   def new
